@@ -19,6 +19,7 @@ My experiments in weaponizing [Rust](https://www.rust-lang.org/) for implant dev
   * [Interesting Rust Libraries](#interesting-Rust-libraries)
   * [Opsec](#Opsec)
   * [Other projects I have have made in Rust](#Other-projects-I-have-made-in-Rust)
+  * [Projects in Rust that can be hepfull ](#Projects-in-Rust-that-can-be-hepfull )
 
 ## Why Rust?
 
@@ -33,7 +34,7 @@ My experiments in weaponizing [Rust](https://www.rust-lang.org/) for implant dev
 | File | Description |
 | ---  | --- |
 | [Allocate_With_Syscalls](../master/Allocate_With_Syscalls/src/main.rs) | It uses NTDLL functions directly with the ntapi Library |
-| [Create_DLL](../master/Create_DLL/src/main.rs) | Creates DLL and pops up a msgbox, Rust does not fully support this so things might get weird since Rust DLL do not have a main function |
+| [Create_DLL](../master/Create_DLL/src/lib.rs) | Creates DLL and pops up a msgbox, Rust does not fully support this so things might get weird since Rust DLL do not have a main function |
 | [DeviceIoControl](../master/DeviceIoControl/src/main.rs) | Opens driver handle and executing DeviceIoControl |
 | [EnableDebugPrivileges](../master/EnableDebugPrivileges/src/main.rs) | Enable SeDebugPrivilege in the current process |
 | [Shellcode_Local_inject](../master/Shellcode_Local_inject/src/main.rs) | Executes shellcode directly in local process by casting pointer |
@@ -48,12 +49,14 @@ My experiments in weaponizing [Rust](https://www.rust-lang.org/) for implant dev
 | [base64_system_enum](../master/base64_system_enum/src/main.rs) | Base64 encoding/decoding strings |
 | [http-https-requests](../master/http-https-requests/src/main.rs) | HTTP/S requests by ignoring cert check for GET/POST |
 | [patch_etw](../master/patch_etw/src/main.rs) | Patch ETW |
-| [ppid_spoof](../master/ppid_spoof/src/main.rst) | Spoof parent process for created process |
+| [ppid_spoof](../master/ppid_spoof/src/main.rs) | Spoof parent process for created process |
 | [tcp_ssl_client](../master/tcp_ssl_client/src/main.rs) | TCP client with SSL that ignores cert check (Requires openssl and perl to be installed for compiling) | 
 | [tcp_ssl_server](../master/tcp_ssl_server/src/main.rs) | TCP Server, with port parameter(Requires openssl and perl to be installed for compiling) |
 | [wmi_execute](../master/wmi_execute/src/main.rs) | Executes WMI query to obtain the AV/EDRs in the host|
 | [Windows.h+ Bindings](../master/bindings.rs) | This file contains structures of Windows.h plus complete customized LDR,PEB,etc.. that are undocumented officially by Microsoft, add at the top of your file include!("../bindings.rs"); |
 | [UUID_Shellcode_Execution](../master/UUID_Shellcode_Execution/src/main.rs) | Plants shellcode from UUID array into heap space and uses `EnumSystemLocalesA` Callback in order to execute the shellcode. |
+| [AMSI Bypass](../master/amsi_bypass/src/main.rs) | AMSI Bypass on Local Process |
+| [Injection_AES_Loader](../master/Injection_AES_Loader/src/main.rs) | NtTestAlert Injection with AES decryption |
 
 ## Compiling the examples in this repo
 
@@ -129,24 +132,35 @@ Careful of \0 bytes, do not forget them for strings in memory, I spent a lot of 
 
 ## Interesting Rust libraries
 
--WINAPI  
--[WINAPI2](https://github.com/MauriceKayser/rs-winapi2)  
--Windows - This is the official Microsoft one that I have not played much with  
+- WINAPI  
+- [WINAPI2](https://github.com/MauriceKayser/rs-winapi2)  
+- Windows - This is the official Microsoft one that I have not played much with
 
 ## OPSEC
 
--Even though Rust has good advantages it is quite difficult to get used to it and it ain't very intuitive.  
--Shellcode generation is another issue due to LLVM. I have found a few ways to approach this.  
+- Even though Rust has good advantages it is quite difficult to get used to it and it ain't very intuitive.  
+- Shellcode generation is another issue due to LLVM. I have found a few ways to approach this.  
 [Donut](https://github.com/TheWover/donut) sometimes does generate shellcode that works but depending on how the project is made, it might not.  
 In general, for shellcode generation the tools that are made should be made to host all code in .text segment,
 which leads to this amazing [repo](https://github.com/b1tg/rust-windows-shellcode).
 There is a shellcode sample in this project that can show you how to structure your code for successfull shellcode generation.  
 In addition, this project also has a shellcode generator that grabs the .text segment of a binary and
 and dumps the shellcode after executing some patches.  
-This project grabs from a specific location the binary so I made a fork that receives the path of the binary as an argument [here](https://github.com/trickster0/rust-windows-shellcode-custom).
+This project grabs from a specific location the binary so I made a fork that receives the path of the binary as an argument [here](https://github.com/trickster0/rust-windows-shellcode-custom).  
+- Even if you remove all debug symbols, rust can still keep references to your home directory in the binary. The only way I've found to remove this is to pass the following flag: `--remap-path-prefix {your home directory}={some random identifier}`. You can use bash variables to get your home directory and generate a random placeholder: `--remap-path-prefix "$HOME"="$RANDOM"`. (By [Yamakadi](https://github.com/yamakadi))
+- Although for the above there is another way to remove info about the home directory by adding at the top of Cargo.toml  
+`cargo-features = ["strip"]` .  
+Since Rust by default leaves a lot of things as strings in the binary, I mostly use this [cargo.toml](../master/cargo.toml) to avoid them and also reduce size  
+with build command   
+`cargo build --release -Z build-std=std,panic_abort -Z build-std-features=panic_immediate_abort --target x86_64-pc-windows-msvc`
+- [Yamakadi] , also pointed out that depending on the imported libraries, stripping is not always consistent on hiding the home directory, so a combination of his solution to remap the path and use teh above cargo would work best. Try to be aware and check your binaries before executing them to your engagements for potential strings that are not stripped properly.
 
 ## Other projects I have have made in Rust
 
--[UDPlant](https://github.com/trickster0/UDPlant) - Basically a UDP reverse shell  
--[EDR Detector](https://github.com/trickster0/EDR_Detector) - Detects the EDRs of the installed system according to the .sys files installed  
--[Lenum](https://github.com/trickster0/Lenum) - A simple unix enumeration tool
+- [UDPlant](https://github.com/trickster0/UDPlant) - Basically a UDP reverse shell  
+- [EDR Detector](https://github.com/trickster0/EDR_Detector) - Detects the EDRs of the installed system according to the .sys files installed  
+- [Lenum](https://github.com/trickster0/Lenum) - A simple unix enumeration tool
+
+## Projects in Rust that can be hepfull 
+
+- [houdini](https://github.com/yamakadi/houdini) - Helps make your executable self-delete
